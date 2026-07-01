@@ -156,7 +156,20 @@ const server = http.createServer(async (req, res) => {
           appVersionCode: 1,
           packageId: `com.converterapp.${sanitizedShortName}`,
           signingMode: 'new',
-          includeSourceCode: false
+          includeSourceCode: false,
+          display: 'standalone',
+          fallbackType: 'customtabs',
+          navigationColor: themeColor || '#00f2fe',
+          startUrl: hostUrl.pathname + hostUrl.search,
+          splashScreenFadeOutDuration: 300,
+          enableNotifications: false,
+          signing: {
+            alias: sanitizedShortName,
+            fullName: name,
+            organization: 'ConverterApp',
+            organizationalUnit: 'Development',
+            countryCode: 'US'
+          }
         };
 
         const pwaBuilderRes = await fetch('https://pwabuilder-cloudapk.azurewebsites.net/generateAppPackage', {
