@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Converter App - Conviértete en App cualquier sitio web</title>
+  
+  <!-- Hojas de estilo y fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Enlace dinámico para el manifiesto PWA -->
+  <link rel="manifest" id="manifest-placeholder">
+  <meta name="theme-color" content="#080810" id="meta-theme-color">
+  
+  <!-- Dependencia para generar el ZIP client-side -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+  <!-- PANTALLA DE CARGA DE APP INSTALADA (Se activa si detecta ?run=...) -->
+  <div id="launch-overlay" class="launch-overlay">
+    <div class="launch-spinner-container">
+      <div id="launch-app-icon" class="launch-app-icon"></div>
+      <h1 id="launch-app-name" class="launch-app-name">Cargando</h1>
+      <p id="launch-status" class="launch-status-txt">Iniciando aplicación...</p>
+      <div class="splash-loader"></div>
+    </div>
+  </div>
+
+  <!-- VISTA DENTRO DE LA PWA CUANDO SE CARGA EN MODO IFRAME FULL-SCREEN -->
+  <div id="fullscreen-iframe-container" style="display:none; width:100vw; height:100vh; position:fixed; top:0; left:0; z-index:9998; background:#000;">
+    <iframe id="fullscreen-iframe" style="width:100%; height:100%; border:none; display:block;"></iframe>
+  </div>
+
+  <!-- INTERFAZ PRINCIPAL DEL CONSTRUCTOR -->
+  <div id="editor-ui">
+    <header class="app-header">
+      <div class="logo">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> CONVERTER APP
+        <span class="logo-badge">PWA Builder</span>
+      </div>
+      <div class="header-links">
+        <button class="header-btn" onclick="openHelpModal()">
+          <i class="fa-regular fa-circle-question"></i> ¿Cómo funciona?
+        </button>
+      </div>
+    </header>
+
+    <main class="main-container">
+      <!-- CONFIGURACIÓN DE APLICACIÓN -->
+      <section class="panel">
+        <h2 class="panel-title">
+          <i class="fa-solid fa-sliders"></i> Ajustes de la Aplicación
+        </h2>
+        
+        <div class="form-section">
+          <!-- Entrada URL y Nombre -->
+          <div class="input-group">
+            <label for="app-url">Dirección Web (URL) <span>Requerido</span></label>
+            <div class="input-wrapper">
+              <input type="url" id="app-url" placeholder="https://ejemplo.com" value="https://wikipedia.org" required>
+              <i class="fa-solid fa-globe"></i>
+            </div>
+          </div>
+          
+          <div class="input-row">
+            <div class="input-group">
+              <label for="app-name">Nombre de la App <span>Requerido</span></label>
+              <div class="input-wrapper">
+                <input type="text" id="app-name" placeholder="Mi Aplicación" value="Wikipedia App" maxlength="45" required>
+                <i class="fa-solid fa-signature"></i>
+              </div>
+            </div>
+            <div class="input-group">
+              <label for="app-short-name">Nombre Corto <span>En pantalla de inicio</span></label>
+              <div class="input-wrapper">
+                <input type="text" id="app-short-name" placeholder="MiApp" value="Wikipedia" maxlength="12">
+                <i class="fa-solid fa-mobile-screen"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pestañas de Diseño Workspace -->
+          <div class="design-workspace">
+            <!-- Selector de Colores -->
+            <div class="color-controls">
+              <div class="input-group">
+                <label>Colores Visuales</label>
+                <div class="color-pickers">
+                  <div class="color-box">
+                    <input type="color" id="theme-color" value="#00f2fe">
+                    <div style="font-size: 0.8rem;">
+                      <strong style="display:block; font-size:0.75rem;">Color de Barra</strong>
+                      <span id="theme-color-val">#00f2fe</span>
+                    </div>
+                  </div>
+                  <div class="color-box">
+                    <input type="color" id="bg-color" value="#0a0a14">
+                    <div style="font-size: 0.8rem;">
+                      <strong style="display:block; font-size:0.75rem;">Fondo Splash</strong>
+                      <span id="bg-color-val">#0a0a14</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="input-group">
+                <label>Estilos Rápidos / Temas</label>
+                <div class="preset-colors">
+                  <div class="preset-dot active" style="background: linear-gradient(135deg, #00f2fe, #4facfe);" data-theme="#00f2fe" data-bg="#0a0a14"></div>
+                  <div class="preset-dot" style="background: linear-gradient(135deg, #7f00ff, #e100ff);" data-theme="#b624ff" data-bg="#070312"></div>
+                  <div class="preset-dot" style="background: linear-gradient(135deg, #ff0844, #ffb199);" data-theme="#ff2a7a" data-bg="#100508"></div>
+                  <div class="preset-dot" style="background: linear-gradient(135deg, #43e97b, #38f9d7);" data-theme="#43e97b" data-bg="#031008"></div>
+                  <div class="preset-dot" style="background: linear-gradient(135deg, #f6d365, #fda085);" data-theme="#fda085" data-bg="#140d0a"></div>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <label for="exec-mode">Modo de Ejecución <span>¿Cómo se abrirá la app?</span></label>
+                <div class="input-wrapper">
+                  <select id="exec-mode">
+                    <option value="redirect" selected>Ventana Integrada (Redirección - Recomendado)</option>
+                    <option value="iframe">Inmersión Completa (Iframe - Puede estar bloqueado por sitios)</option>
+                  </select>
+                  <i class="fa-solid fa-crop-simple"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Creador de Iconos (Canvas) -->
+            <div class="icon-studio">
+              <label style="font-size: 0.85rem; font-weight: 500; color: var(--text-secondary);">Generador de Icono</label>
+              
+              <div class="icon-canvas-container">
+                <canvas id="icon-canvas" width="512" height="512"></canvas>
+              </div>
+
+              <div class="icon-tools">
+                <div class="icon-mode-tabs">
+                  <div class="icon-tab active" data-mode="canvas">Generar Icono</div>
+                  <div class="icon-tab" data-mode="upload">Subir Imagen</div>
+                </div>
+
+                <!-- Opciones de Generar -->
+                <div id="icon-panel-canvas" class="icon-settings-panel active">
+                  <div class="input-row" style="gap: 0.5rem; margin-top: 0.5rem;">
+                    <div class="input-group">
+                      <input type="text" id="icon-text" placeholder="W" value="W" maxlength="2" style="padding: 0.4rem; text-align: center; font-size: 0.85rem; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 8px; color: white;">
+                    </div>
+                    <div class="input-group">
+                      <select id="icon-shape" style="padding: 0.4rem; font-size: 0.85rem; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 8px; color: white;">
+                        <option value="squircle">Squircle</option>
+                        <option value="circle">Círculo</option>
+                        <option value="rounded">Bordes Suaves</option>
+                        <option value="square">Cuadrado</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Opciones de Subida -->
+                <div id="icon-panel-upload" class="icon-settings-panel">
+                  <label class="file-upload-btn" style="margin-top: 0.5rem;">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar Imagen
+                    <input type="file" id="icon-file" accept="image/*" style="display: none;">
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Botones de Acción -->
+          <div class="actions-container">
+            <button id="btn-install" class="btn btn-primary">
+              <span class="btn-icon-wrapper"><i class="fa-solid fa-circle-down"></i></span>
+              Auto Instalar
+            </button>
+            <button id="btn-download" class="btn btn-secondary">
+              <span class="btn-icon-wrapper"><i class="fa-solid fa-file-zipper"></i></span>
+              Descargar ZIP
+            </button>
+            <button id="btn-apk" class="btn btn-accent">
+              <span class="btn-icon-wrapper"><i class="fa-brands fa-android"></i></span>
+              Descargar APK
+            </button>
+          </div>
+
+          <!-- Banner de Estado de Instalación -->
+          <div id="status-banner" class="status-banner waiting">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <div id="status-text">
+              Inicializando el entorno del instalador...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SIMULADOR MÓVIL (VISTA DERECHA) -->
+      <section class="preview-container">
+        <div class="preview-tabs">
+          <button class="preview-tab-btn active" data-view="home">
+            <i class="fa-solid fa-house-chimney"></i> Pantalla de Inicio
+          </button>
+          <button class="preview-tab-btn" data-view="splash">
+            <i class="fa-solid fa-spinner"></i> Splash Screen
+          </button>
+          <button class="preview-tab-btn" data-view="web">
+            <i class="fa-solid fa-window-maximize"></i> App Ejecutándose
+          </button>
+        </div>
+
+        <div class="device-phone" id="phone-shell">
+          <div class="device-notch">
+            <div class="notch-speaker"></div>
+            <div class="notch-camera"></div>
+          </div>
+          
+          <div class="device-screen">
+            <!-- Barra de Estado del Teléfono -->
+            <div class="device-status-bar" id="phone-status-bar">
+              <div class="status-left">09:41</div>
+              <div class="status-right">
+                <i class="fa-solid fa-signal"></i>
+                <i class="fa-solid fa-wifi"></i>
+                <i class="fa-solid fa-battery-three-quarters"></i>
+              </div>
+            </div>
+
+            <!-- VISTA 1: HOME SCREEN -->
+            <div class="screen-content view-home active" id="view-home">
+              <div class="home-apps-grid">
+                <!-- App de ejemplo 1 -->
+                <div class="mock-app-item">
+                  <div class="mock-app-icon-wrapper">
+                    <div class="mock-app-icon" style="background-image: url('https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=100&auto=format&fit=crop');"></div>
+                  </div>
+                  <span class="mock-app-name">Spotify</span>
+                </div>
+                <!-- Nuestra App Dinámica -->
+                <div class="mock-app-item" onclick="switchPreview('splash')">
+                  <div class="mock-app-icon-wrapper" style="box-shadow: 0 0 10px rgba(0, 242, 254, 0.4);">
+                    <div class="mock-app-icon current-app-icon-bg"></div>
+                  </div>
+                  <span class="mock-app-name current-app-name-label">Cargando...</span>
+                </div>
+                <!-- App de ejemplo 2 -->
+                <div class="mock-app-item">
+                  <div class="mock-app-icon-wrapper">
+                    <div class="mock-app-icon" style="background-image: url('https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?q=80&w=100&auto=format&fit=crop');"></div>
+                  </div>
+                  <span class="mock-app-name">YouTube</span>
+                </div>
+                <!-- App de ejemplo 3 -->
+                <div class="mock-app-item">
+                  <div class="mock-app-icon-wrapper">
+                    <div class="mock-app-icon" style="background-image: url('https://images.unsplash.com/photo-1598128558393-70ff21433be0?q=80&w=100&auto=format&fit=crop');"></div>
+                  </div>
+                  <span class="mock-app-name">Fotos</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- VISTA 2: SPLASH / LOADING SCREEN -->
+            <div class="screen-content view-splash" id="view-splash">
+              <div class="splash-icon current-app-icon-bg"></div>
+              <h3 class="splash-title current-app-name-label">Nombre de App</h3>
+              <p class="splash-subtitle">Iniciando aplicación segura...</p>
+              <div class="splash-loader"></div>
+            </div>
+
+            <!-- VISTA 3: WEB / RUNNER SCREEN -->
+            <div class="screen-content view-web" id="view-web">
+              <!-- Barra de navegador simulada -->
+              <div class="mock-browser-bar" id="mock-browser-bar">
+                <div class="mock-browser-controls">
+                  <i class="fa-solid fa-chevron-left"></i>
+                  <i class="fa-solid fa-chevron-right"></i>
+                </div>
+                <div class="mock-browser-url" id="mock-browser-url-text">https://wikipedia.org</div>
+                <i class="fa-solid fa-ellipsis-vertical mock-browser-menu"></i>
+              </div>
+              <div class="web-frame-container">
+                <!-- Contenedor del Iframe con soporte para advertencia si hay bloqueo por cabeceras X-Frame -->
+                <iframe id="preview-iframe" class="web-frame" src="about:blank"></iframe>
+                
+                <div id="iframe-warning" class="iframe-blocked-warning" style="display: none;">
+                  <i class="fa-solid fa-shield-halved"></i>
+                  <h3>Sitio Protegido</h3>
+                  <p>Este sitio web bloquea su previsualización en marcos internos (cabecera X-Frame). Sin embargo, <strong>funcionará perfectamente</strong> al instalarse o descargarse.</p>
+                  <a href="#" id="iframe-open-btn" target="_blank" class="iframe-btn">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Probar en Nueva Pestaña
+                  </a>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- HISTORIAL DE APLICACIONES CREADAS -->
+    <section class="main-container" style="margin-top: 0; padding-top: 0;">
+      <div class="panel" style="grid-column: 1 / -1; min-height: auto;">
+        <h2 class="panel-title">
+          <i class="fa-solid fa-clock-rotate-left"></i> Tus Aplicaciones Guardadas
+        </h2>
+        <div class="history-section">
+          <div id="history-grid" class="history-grid">
+            <!-- Las tarjetas de historial se renderizarán dinámicamente -->
+            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.9rem;">
+              <i class="fa-solid fa-folder-open" style="font-size: 1.8rem; display: block; margin-bottom: 0.5rem;"></i>
+              Aún no has creado aplicaciones. Rellena los datos superiores para empezar.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- MODAL DE INSTRUCCIONES / AYUDA -->
+  <div id="help-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Bienvenido a Converter App
+        </h3>
+        <button class="modal-close" onclick="closeHelpModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Converter App te permite empaquetar cualquier sitio web en una <strong>PWA (Progressive Web App)</strong> para que se comporte como una aplicación de escritorio o móvil.</p>
+        
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-desc">
+            <strong>Configura tu aplicación</strong> ingresando el enlace (URL) y seleccionando nombre, colores y logotipo.
+          </div>
+        </div>
+        
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-desc">
+            Haz clic en <strong>Auto Instalar</strong> para añadir la aplicación a tu menú de inicio o escritorio directamente desde el navegador.
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-desc">
+            O selecciona <strong>Descargar ZIP</strong> para obtener el código fuente completo, listo para subirlo a tu propio hosting en minutos.
+          </div>
+        </div>
+
+        <p style="font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 0.8rem; margin-top: 0.5rem;">
+          <i class="fa-solid fa-info-circle"></i> <strong>Nota para iOS:</strong> En dispositivos Apple (Safari), para instalar directamente haz clic en el botón de Compartir y luego en <strong>"Añadir a la pantalla de inicio"</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script principal de lógica -->
+  <script src="app.js"></script>
+</body>
+</html>
